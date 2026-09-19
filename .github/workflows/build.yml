@@ -13,23 +13,36 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Unzip Project Files
+      - name: Unzip and Prepare Code
         run: |
-          unzip -o "school-portal (2).zip" -d extracted_app
-          mv extracted_app/*/* . 2>/dev/null || mv extracted_app/* . 2>/dev/null || true
+          mkdir temp_extracted
+          unzip -q "*.zip" -d temp_extracted
+          # যদি জিপের ভেতরে কোনো মূল ফোল্ডার থাকে তা বের করে আনা
+          if [ $(find temp_extracted -maxdepth 1 -mindepth 1 -type d | wc -l) -eq 1 ]; then
+            cp -r temp_extracted/*/* . 2>/dev/null || true
+            cp -r temp_extracted/*/.* . 2>/dev/null || true
+          else
+            cp -r temp_extracted/* . 2>/dev/null || true
+            cp -r temp_extracted/.* . 2>/dev/null || true
+          fi
+          rm -rf temp_extracted
+          ls -la
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
 
       - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+        run: |
+          if [ -f "./gradlew" ]; then
+            chmod +x gradlew
+          fi
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: |
+          ./gradlew assembleDebug --stacktrace --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
